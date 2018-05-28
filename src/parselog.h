@@ -47,21 +47,19 @@ typedef struct{
 // ----------------------------- FUNCTIONS ------------------------------ //
 
 
-//---------------------------------------------------------------//
 
-int power10(int exponent)
+// integer log base 10 of n
+int intlog10(int n)
 {
 
     int result = 1;
-    for(int i=1; i<=exponent; i++)
+    for(int i=1; i<=n; i++)
     {
         result = result * 10;
     }
     return result;
 }
 
-
-//---------------------------------------------------------------//
 
 // divide by 2, rounding up
 int ceil2(int a)
@@ -73,11 +71,6 @@ int ceil2(int a)
 
 
 
-
-
-
-
-//---------------------------------------------------------------//
 
 // update session time stamps and output indices 
 // of sessions exceeding the max duration
@@ -94,116 +87,6 @@ int t_update(int t, int dur, SESSION S[], int nActive, int out[], int *n_out)
         } 
         S[i].request_tlag = S[i].request_t;
     }
-
-
-}
-
-
-int matchIP(char *ip, SESSION S[], int nActive, int *rank2idx, int *idx2rank){
-
-
-    // do search on sorted IP list
-    int sort = 0;                       // (match=0,sort_up=1,sort_down=-1)
-    int rank = ceil2(nActive);          // ip rank number
-    int nrem = nActive;                 // n remaining candidate matches
-    int shift = rank;                   // magnitude of next rank shift
-    int idx;                            // session index
-    int subidx = rank;                  // relative index of current ...
-                                        // ...rank among remaining candidates 
-
-
-    
-    while(nrem>0)
-    {
-
-        rank = rank + shift*sort;            // update ip rank number
-        //printf("probing rank: %d\n",rank);
-
-        // is ip less than, equal to, or greater than current rank
-        //printf("probing rank: %d of %d\n",rank,nActive);
-        //printf("matching:\n %s\n %s\n",ip,sess[rank2idx[rank]].ip);
-        sort = strcmp(ip,S[rank2idx[rank-1]].ip);                  
-        if(sort==0)
-        {
-            //printf("match found\n");
-            break;
-        }
-        else if(sort>0)
-        {                            
-            //printf("no match - %d remaining\n",nrem);
-            nrem = nrem - subidx;
-            shift = ceil2(nrem);
-            subidx = shift;
-            sort=1;
-        }
-        else if(sort<0)
-        {
-            //printf("no match - %d remaining\n",nrem);
-            nrem = subidx - 1;
-            shift = ceil2(nrem);
-            if(nrem%2)
-            {
-                subidx = nrem - (nrem - shift);
-            }
-            else
-            {
-                subidx = nrem - (nrem - shift) + 1;
-            }
-            sort=-1;
-        }
-    }
-
-    //printf("matching finished- rank: %d,  sort %d\n", rank, sort);
-    // output session index and update rank list
-    if(sort==0){
-
-        if(nActive==0)
-        {
-            idx = 0;
-            idx2rank[idx] = 1;
-        }
-        else
-        {
-            idx = rank2idx[rank-1];         // output index of matched IP
-            idx2rank[idx] = rank;
-        }
-
-    }
-    else 
-    {
-        int n = nActive+1;              // increment active users
-        idx = n-1;                        // append new entry to struct
-
-        // sort rank index map to reflect new rank list
-        if(sort==1){
-            rank++;
-        }
-        
-        //printf("\nupdated mappings rank: %i\n",rank-1);
-        for(int i=n-1; i>rank-1; i--){
-            rank2idx[i] = rank2idx[i-1]; 
-        }
-        rank2idx[rank-1] = n-1;
-        
-        for(int i=0; i<n; i++){
-            idx2rank[rank2idx[i]] = i+1;
-        }
-        //idx2rank[n-1] = rank;
-        /*
-        printf("\n - sort update - %i\n",sort);
-        for(int i=0; i<n; i++)
-        {
-            printf("rank2idx: %i,  idx2rank: %i,  \n",rank2idx[i],idx2rank[i]-1);
-        }
-        */
-
-
-    }
-
-
-    //printf("matching finished- idx: %d,  sort %d\n", idx, sort);
-    return idx;
-
 }
 
 
@@ -230,27 +113,26 @@ LINE parseLine(char* line, char* delim)
                 break;
             case 2:
                 strcpy(ls.time, tok);
-                if(strlen(ls.time)!=8)
-                {
-                    printf("abnormal tstring: %s\n",ls.time);
-                }
                 break;
-
         }
         i++;
     }
     return ls;
 }
 
+
+
+
 // parse time string and convert to sec
 int str2time(char * tstr){
    
+    // if valid string format
     if(strlen(tstr)==8)
     {
         
-        int i=0;
-        int sec = 0;
-        const int secper[] = {3600,60,1};
+        int i=0;                            // num parses
+        int sec = 0;                        // cumulative num seconds
+        const int secper[] = {3600,60,1};   // second per (hr,min,sec)
         const char* tok;
         
         for (tok = strtok(tstr, ":\n");
@@ -258,17 +140,17 @@ int str2time(char * tstr){
                 tok = strtok(NULL, ":\n"))
         {
             
-            // scale digits by decimal position
+            // scale digits by decimal position and sum to tmp_t
             int str_digit;
             int tmp_t = 0;
             for(int j = 1; j<=strlen(tok); j++)
             { 
-                str_digit = tok[j-1]-'0';
-                str_digit = str_digit * power10(strlen(tok)-j);
+                str_digit = tok[j-1]-'0';                       
+                str_digit = str_digit * intlog10(strlen(tok)-j);
                 tmp_t = tmp_t + str_digit; 
             }
 
-            // scale result by num sec/per
+            // scale result by num sec/per and add to cumulative sec
             sec = sec + tmp_t * secper[i];
             i++;         
         }
@@ -291,10 +173,10 @@ int str2time(char * tstr){
     
 }
 
-//---------------------------------------------------------------//
 
 
-// parse time string and convert to sec
+
+// generate string from time (sec) in HH:MM:SS format
 char *time2str(int t)
 {
 
@@ -302,12 +184,12 @@ char *time2str(int t)
     static char tstr[8+1];      // output str
     int hhmmss[3];              // numeric values hr,min,sec
 
-    t = t % 86400;              // ensure t < 1 day
-    hhmmss[0] = t/3600;         // num hrs
+    t = t % 86400;              // ensure t < 1 day 
+    hhmmss[0] = t/3600;         // num hrs remaining after division
     t = t % 3600;
-    hhmmss[1] = t/60;           // num min
+    hhmmss[1] = t/60;           // num min remaining after division
     t = t % 60;
-    hhmmss[2] = t;              // num sec
+    hhmmss[2] = t;              // num sec remaining after division
 
     // convert numeric values to str in HH:MM:SS format
     for(int i=0; i<nchar; i++)
@@ -318,11 +200,11 @@ char *time2str(int t)
 
         switch(i%3){
             case 0:
-                c = '0' + hhmmss[subidx]/10;
-                hhmmss[subidx] = hhmmss[subidx]%10;
+                c = '0' + hhmmss[subidx]/10;            // val at tens position
+                hhmmss[subidx] = hhmmss[subidx]%10;     // decrement to remainder
                 break;
             case 1:
-                c = '0' + hhmmss[subidx];
+                c = '0' + hhmmss[subidx];               // val at ones position
                 break;
             case 2:
                 c = ':';
@@ -330,14 +212,106 @@ char *time2str(int t)
         }
         tstr[i] = c;
     }
-    tstr[nchar+1] = '\0';
-
+    
+    // null terminate str and output
+    tstr[nchar+1] = '\0';           
     return tstr;
 }
 
 
-//---------------------------------------------------------------//
 
+// attempt to match current ip against existing sessions via search tree
+// and update rank order lists if no match is found
+int matchIP(char *ip, SESSION S[], int nActive, int *rank2idx, int *idx2rank){
+
+
+    // do search on sorted IP list
+    int sort = 0;                       // (match=0,sort_up=1,sort_down=-1)
+    int rank = ceil2(nActive);          // ip rank number
+    int nrem = nActive;                 // n remaining candidate matches
+    int shift = rank;                   // magnitude of next rank shift
+    int idx;                            // session index
+    int subidx = rank;                  // relative index of current ...
+                                        // ...rank among remaining candidates 
+
+    
+    while(nrem>0)
+    {
+
+        rank = rank + shift*sort;                   // update ip rank number
+        sort = strcmp(ip,S[rank2idx[rank-1]].ip);   // compare addresses                  
+        if(sort==0)
+        {
+            break;                                  // match found, stop search
+        }
+        else if(sort>0)
+        {                            
+            nrem = nrem - subidx;                   // shift right
+            shift = ceil2(nrem);
+            subidx = shift;
+            sort=1;
+        }
+        else if(sort<0)
+        {
+            nrem = subidx - 1;                      // shift left
+            shift = ceil2(nrem);
+            if(nrem%2)
+            {
+                subidx = nrem - (nrem - shift);
+            }
+            else
+            {
+                subidx = nrem - (nrem - shift) + 1;
+            }
+            sort=-1;
+        }
+    }
+
+
+    // output session index and update rank list
+    if(sort==0){
+
+        if(nActive==0)
+        {
+            idx = 0;
+            idx2rank[idx] = 1;
+        }
+        else
+        {
+            idx = rank2idx[rank-1];         // output index of matched IP
+            idx2rank[idx] = rank;
+        }
+
+    }
+    else 
+    {
+        int n = nActive+1;                  // increment active users
+        idx = n-1;                          // append new entry to struct
+
+        
+        if(sort==1){
+            rank++;                         // insert above current rank
+        }
+        
+        // sort rank index map to reflect new rank list
+        for(int i=n-1; i>rank-1; i--){
+            rank2idx[i] = rank2idx[i-1]; 
+        }
+        rank2idx[rank-1] = n-1;
+        
+        for(int i=0; i<n; i++){
+            idx2rank[rank2idx[i]] = i+1;
+        }
+
+    }
+
+    return idx;
+}
+
+
+
+
+// output data from expired sessions to file
 void write_data(FILE *fp, SESSION S[], int out[], int n_out)
 {
 
@@ -364,7 +338,7 @@ void write_data(FILE *fp, SESSION S[], int out[], int n_out)
 
 
 
-/* Function to sort an array using insertion sort*/
+// sort array via insertion sort
 void array_sort(int array[], int n)
 {
    int i, val, j;
@@ -373,9 +347,6 @@ void array_sort(int array[], int n)
        val = array[i];
        j = i-1;
 
-       /* Move elements of arr[0..i-1], that are
-          greater than key, to one position ahead
-          of their current position */
        while (j >= 0 && array[j] > val)
        {
            array[j+1] = array[j];
@@ -387,18 +358,17 @@ void array_sort(int array[], int n)
 
 
 
-//---------------------------------------------------------------//
-
+// remove expired sessions by shrinking arrays to the left
 void trim_sessions(SESSION S[], int out[], int n_out, 
         int rank2idx[], int idx2rank[], int *nActive)
 {
 
     
-    // delete expired sessions and shrink session struct to the left
+    // shrink session struct
     for(int i=out[0]; i<*nActive; i++)
     {
 
-        // calculate num positions to shift
+        // calculate num positions to shift current idx
         int shift = n_out;
         for(int j=n_out-1; j>=0; j--)
         {
@@ -412,7 +382,7 @@ void trim_sessions(SESSION S[], int out[], int n_out,
 
         }
 
-        S[i]=S[i+shift];                  // shrink struct
+        S[i]=S[i+shift];        // shrink struct by overwriting expired data
 
     }
 
@@ -424,21 +394,17 @@ void trim_sessions(SESSION S[], int out[], int n_out,
     }
     array_sort(delrank, n_out);
 
-    /*
-    printf("before decrement\n");
-    for(int i=0; i<*nActive; i++)
-    {
-        printf("idx: %i,  rank: %i\n",i,idx2rank[i]-1);
-    }
-    * */
+
     // update rank/index mapping
     for(int i=0; i<*nActive; i++)
     {
         
+        // decrement index/rank values 
         int rankshift=0, idxshift=0;
         for(int j=n_out; j>0; j--)
         {
-            if(idx2rank[i]>delrank[j]){
+            // decrement if rank/index is higher than deleted rank/index
+            if(idx2rank[i]>delrank[j]){     
                 rankshift++;
             }
             if(rank2idx[i]>out[j]){
@@ -449,13 +415,7 @@ void trim_sessions(SESSION S[], int out[], int n_out,
         rank2idx[i] = rank2idx[i] - idxshift;
 
     }
-    /*
-    printf("after decrement - before shrink\n");
-    for(int i=0; i<*nActive; i++)
-    {
-        printf("idx: %i,  rank: %i\n",i,idx2rank[i]-1);
-    }
-     * */
+
 
 
     // shrink rank mapping
@@ -466,26 +426,15 @@ void trim_sessions(SESSION S[], int out[], int n_out,
         int shift = n_out;
         for(int j=n_out-1; j>=0; j--)
         {
-            //printf("comparing %i < %i\n",i,out.data[j]);
             if(i<out[j]-1){
                 shift = shift - 1;
             }  
         }
-        //printf("replacing idx2rank %i with %i\n",i,i+shift);
         idx2rank[i]=idx2rank[i+shift];
 
     }
-    /*
-    printf("idx2rank: after shrink\n");
-    for(int i=0; i<*nActive-out.size; i++)
-    {
-        printf("idx: %i,  rank: %i\n",i,idx2rank[i]-1);
-    }
-    */
-
 
     // shrink index mapping
-    //printf("deleting rank: %i\n",delrank[0]-1);
     for(int i=delrank[0]-1; i<*nActive; i++)
     {
 
@@ -493,32 +442,21 @@ void trim_sessions(SESSION S[], int out[], int n_out,
         int shift = n_out;
         for(int j=n_out-1; j>=0; j--)
         {
-            //printf("comparing %i >= %i\n",i,delrank[j]-1);
             if(i>=delrank[j]-1){
                 break;
             }
             else{
-                //printf("decrementing shift\n");
                 shift--;
             }     
         }
-
-        //printf("replacing %i with %i\n",i,i+shift);
+        
         rank2idx[i]=rank2idx[i+shift];
-
     }
-   
-   
+     
    // decrement nActive
    *nActive = *nActive - n_out;
 
 }
-
-
-// ---------------------------------------------------------------//
-
-
-
 
 
 #ifdef __cplusplus

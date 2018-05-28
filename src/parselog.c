@@ -14,17 +14,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "parse_utils.h"
+#include "parselog.h"
 
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    
+    if(argc < 1){
+        printf("error: no input paths specified\n");
+        return 1;
+    }
+    
     // open files and check for valid pointers
-    //FILE *fLog = fopen("/home/zw/Documents/log.csv", "r");
-    FILE *fLog = fopen("/home/zw/Downloads/log20170214/log20170214.csv", "r");
-    FILE *fDur = fopen("/home/zw/Documents/inactivity_period.txt", "r");
-    FILE *fSes = fopen("/home/zw/Documents/sessionization.txt", "w");
+    FILE *fLog = fopen(argv[1], "r");
+    FILE *fDur = fopen(argv[2], "r");
+    FILE *fSes = fopen(argv[3], "w");
     if(fLog==NULL) printf("Error opening log file");
     if(fDur==NULL) printf("Error opening inactivity_period file");
     if(fSes==NULL) printf("Error opening write file");
@@ -45,19 +50,17 @@ int main()
     int ct = 0;
     int max_out = 0;
     
-    
     // get session duration from file
     char txtline[2048];
     fgets(txtline, sizeof txtline, fDur);
     for(int i=0; i<strlen(txtline)-1; i++){
         int str_digit = txtline[i]-'0';
-        dur = dur + str_digit * power10(strlen(txtline)-i-2);
+        dur = dur + str_digit * intlog10(strlen(txtline)-i-2);
     }
     fclose(fDur);
     
-    fgets(txtline, sizeof txtline, fLog);
-    
-    LINE ls;
+    LINE ls;                                // parsed single line data
+    fgets(txtline, sizeof txtline, fLog);   // read log header
     
     while (fgets(txtline, sizeof txtline, fLog))
     {
@@ -87,7 +90,6 @@ int main()
             S[nActive].request_tlag = t_curr;
             S[nActive].request_n = 1;
             nActive++;
-            
         }
         else{
 
@@ -100,25 +102,17 @@ int main()
         // check for expired sessions if clock advances
         if(t_curr!=t_prev){
                         
-            if((t_curr - t_prev)>1000 || t_curr<0)
-            {
-                printf("\n");
-                printf("\nrow: %i,  tcurr: %i,  tstamp: %s,\n",ct,t_curr,ls.time);
-            }
-            t_prev = t_curr;
+            t_prev = t_curr;                // set time stamp of previous line
+            int n_out = 0;                  // num sessions to output
+            int out[2000];                  // placeholder for output indices
             
-            int n_out = 0;                              // num indices to output
-            int out[20000];                             // placeholder for output indices
+            // identify number and indices of sessions to output
             t_update(t_curr, dur, S, nActive, out, &n_out);
             if(n_out>max_out){
                 max_out = n_out;
             }
-            if((ct%10000)==0)
-            {
-                printf("\n max output: %i\n", max_out);
-            }
             
-            
+            // write data to output and remove expired sessions from S
             if(n_out)
             {
                 write_data(fSes, S, out, n_out);
@@ -148,6 +142,7 @@ int main()
 
     }
     
+    // write any remaining sessions at end of file
     int n_out = nActive;
     int out[nActive];
     for(int i=0; i<nActive; i++){
@@ -159,20 +154,10 @@ int main()
         trim_sessions(S, out, n_out, rank2idx, idx2rank, &nActive);
     }
     
-    printf("%i\n",ct);
+    printf("total lines parsed: %i,  peak active user number: %i\n",ct,max_out);
 
-    /*
-    for(int i=0; i<nActive; i++){
-        printf("rank: %i,  idx: %i\n",i,rank2idx[i]);
-    }
-    for(int i=0; i<nActive; i++){
-        printf("idx: %i,  rank: %i\n",i,idx2rank[i]-1);
-    }
-    for(int i=0; i<nActive; i++){
-       printf("%d - ip: %s\n",i, sess[rank2idx[i]].ip); 
-    }
-     * */
-
+    // close output file
     fclose(fSes);
+    return 0;
 }
 
