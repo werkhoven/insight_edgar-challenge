@@ -1,3 +1,24 @@
+/* Function: trim_sessions
+ * --------------------
+ * 	shrinks session data struct by removing expired session data and updates
+ *	rank-order and index-rank mappings to reflect new session list
+ * 
+ *	S:			->	struct containing session data
+ *	out:	 	-> 	array to hold session indices to write to file
+ * 	n_out		-> 	number of sessions to write to file
+ *	rank2idx	->	array containing indices of S sorted by IP rank-order
+ *	idx2rank	->	array containing ranks of S sorted by index number
+ *	nActive:	->	number of active user sessions
+ *
+ * Function: array_sort
+ * --------------------
+ * 	sorts the list of deleted ranks by insertion sorting
+ * 
+ *	array:		-> 	unsorted array
+ *	n:			-> 	number of elements of array
+ *	
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,18 +1,45 @@
-/* Functions:
-
-t_update 	-> update output indices based on time since last request, 
-str2time 	-> convert text timestamps to time (sec)
-time2str 	-> generate time stamp strings (HH:MM:SS) from clock time
-write_data	-> write data from expired sessions to file
-	
-*/
+/* Function: str2time
+ * --------------------
+ * 	converts time string (HH:MM:SS) to number of seconds
+ * 
+ *	tstr:		-> 	time stamp string 
+ *	returns:	->  number of seconds relative to 00:00:00 (0-86400)
+ *
+ * Function: time2str
+ * --------------------
+ * 	converts number of seconds to time stramp string (HH:MM:SS)
+ * 
+ *	t:			-> 	number of seconds relative to 00:00:00 (0-86400)
+ *	returns:	->  time stamp string (HH:MM:SS)
+ *
+ * Function: t_update
+ * --------------------
+ * 	updates session output indices based on time since last request if time
+ *	since last requests exceeds inactivity period
+ * 
+ *	t:			-> 	time (sec) acquired from log time stamps
+ *	S:			->	struct containing session data
+ *	nActive:	->	number of active user sessions
+ *	out:	 	-> 	array to hold session indices to write to file
+ * 	n_out		-> 	number of sessions to write to file
+ *
+ * Function: write_data
+ * --------------------
+ * 	prints expired session data to output (sessionization.txt)
+ * 
+ *	fp:			-> 	file pointer to output file
+ *	S:			->	struct containing session data
+ *	out:		->  array of indices of S to write to file
+ *	n_out:		->	number of sessions to output
+ *	
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "struct_def.h"
 
-// integer log base 10 of n
+// integer compatible log base 10 of n
 int intlog10(int n)
 {
     int result = 1;
@@ -22,24 +49,6 @@ int intlog10(int n)
     }
     return result;
 }
-
-// update session time stamps and output indices 
-// of sessions exceeding the max duration
-int t_update(int t, int dur, SESSION S[], int nActive, int out[], int *n_out)
-{
-    
-    t = t-1;
-    for(int i=0; i<nActive; i++)
-    {
-
-        if(t - S[i].request_t >= dur){
-            out[*n_out] = i;
-            *n_out = *n_out + 1;
-        } 
-        S[i].request_tlag = S[i].request_t;
-    }
-}
-
 
 
 // parse time string and convert to sec
@@ -115,7 +124,7 @@ char *time2str(int t)
         switch(i%3){
             case 0:
                 c = '0' + hhmmss[subidx]/10;            // val at tens position
-                hhmmss[subidx] = hhmmss[subidx]%10;     // decrement to remainder
+                hhmmss[subidx] = hhmmss[subidx]%10;     // get remainder
                 break;
             case 1:
                 c = '0' + hhmmss[subidx];               // val at ones position
@@ -131,6 +140,24 @@ char *time2str(int t)
     tstr[nchar+1] = '\0';           
     return tstr;
 }
+
+
+// update session time stamps and output indices 
+// of sessions exceeding the max duration
+int t_update(int t, int dur, SESSION S[], int nActive, int out[], int *n_out)
+{
+    
+    t = t-1;
+    for(int i=0; i<nActive; i++)
+    {
+        if(t - S[i].request_t >= dur){
+            out[*n_out] = i;
+            *n_out = *n_out + 1;
+        } 
+        S[i].request_tlag = S[i].request_t;
+    }
+}
+
 
 
 
