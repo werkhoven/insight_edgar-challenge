@@ -18,6 +18,7 @@
 
 
 
+
 int main(int argc, char *argv[])
 {
     
@@ -47,8 +48,8 @@ int main(int argc, char *argv[])
     int t_curr=0;                           // time stamp on current line (sec)
     int t_prev=0;                           // time of last t_update (sec)
     int dur = 0;                            // max session duration (sec)
-    int ct = 0;
-    int max_out = 0;
+    int ct = 0;								// total line count
+
     
     // get session duration from file
     char txtline[2048];
@@ -62,13 +63,13 @@ int main(int argc, char *argv[])
     LINE ls;                                // parsed single line data
     fgets(txtline, sizeof txtline, fLog);   // read log header
     
+    // parse lines until the end of the file
     while (fgets(txtline, sizeof txtline, fLog))
     {
-        
-        ct++;
-        
+         
         // parse single line
-        ls = parseLine(txtline, ",\n");   
+        ls = parse_line(txtline, ",\n");
+       	ct++;  
         
         // update t_current and search rank sorted list for ip match
         int idx = matchIP(ls.ip, S, nActive, rank2idx, idx2rank);   
@@ -108,9 +109,7 @@ int main(int argc, char *argv[])
             
             // identify number and indices of sessions to output
             t_update(t_curr, dur, S, nActive, out, &n_out);
-            if(n_out>max_out){
-                max_out = n_out;
-            }
+
             
             // write data to output and remove expired sessions from S
             if(n_out)
@@ -154,7 +153,10 @@ int main(int argc, char *argv[])
         trim_sessions(S, out, n_out, rank2idx, idx2rank, &nActive);
     }
     
-    printf("total lines parsed: %i,  peak active user number: %i\n",ct,max_out);
+    free(S);
+    free(idx2rank);
+    free(rank2idx);
+	printf("total lines parsed: %i\n",ct);
 
     // close output file
     fclose(fSes);

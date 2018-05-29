@@ -18,6 +18,7 @@
 
 
 
+
 int main(int argc, char *argv[])
 {
     
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
     int t_curr=0;                           // time stamp on current line (sec)
     int t_prev=0;                           // time of last t_update (sec)
     int dur = 0;                            // max session duration (sec)
-    int ct = 0;
+    int ct = 0;								// total line count
 
     
     // get session duration from file
@@ -62,13 +63,13 @@ int main(int argc, char *argv[])
     LINE ls;                                // parsed single line data
     fgets(txtline, sizeof txtline, fLog);   // read log header
     
+    // parse lines until the end of the file
     while (fgets(txtline, sizeof txtline, fLog))
     {
-        
-        ct++;
-        
+         
         // parse single line
-        ls = parseLine(txtline, ",\n");   
+        ls = parse_line(txtline, ",\n");
+       	ct++;  
         
         // update t_current and search rank sorted list for ip match
         int idx = matchIP(ls.ip, S, nActive, rank2idx, idx2rank);   
