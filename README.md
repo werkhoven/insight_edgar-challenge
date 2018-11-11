@@ -1,11 +1,11 @@
 # Summary
 
-Since the data is simultaneously streamed from the to and from file, my primary concern with scalability and real-time feedback was optimizing cases where the inactivity period gets very large. This means that searching and sorting the data will be the likely bottle neck. My approach was to reduce the total number of comparisons needed to determine if any given entry belongs to a new or existing user. In practice, this primarily consisted of the following to strategies:
+Since the data is simultaneously streamed to and from file, my primary concern with scalability and real-time feedback was optimizing cases where the inactivity period gets very large. This means that searching and sorting the data will be the likely bottle neck. My approach was to reduce the total number of comparisons needed to determine if any given entry belongs to a new or existing user. In practice, this primarily consisted of the following to strategies:
 
-		1. Use the rank-order of IP addresses to explore a search tree (match_ip.c) 
-		   to determine if any active user had a matching address
-		2. Sort a rank->index mapping of the session data to avoid constantly 
-		   sorting the session data itself
+	1. Use the rank-order of IP addresses to explore a search tree (match_ip.c) 
+	   to determine if any active user had a matching address
+	2. Sort a rank->index mapping of the session data to avoid constantly 
+	   sorting the session data itself
 	
 # Approach
 
